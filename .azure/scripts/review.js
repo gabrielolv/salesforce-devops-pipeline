@@ -1,41 +1,40 @@
 import { execSync } from 'child_process';
-import { runAiReview } from '../../.github/scripts/ai-review.js';
 
 // ── Rule imports ──────────────────────────────────────────────────────────────
-import noSoqlInLoops       from '../../.github/scripts/rules/apex/noSoqlInLoops.js';
-import noDmlInLoops        from '../../.github/scripts/rules/apex/noDmlInLoops.js';
-import bulkifiedLogic      from '../../.github/scripts/rules/apex/bulkifiedLogic.js';
-import apexTestChanged     from '../../.github/scripts/rules/apex/apexTestChanged.js';
-import noHardcodedIds      from '../../.github/scripts/rules/apex/noHardcodedIds.js';
-import broadCatchRule      from '../../.github/scripts/rules/apex/broadCatchRule.js';
-import nonSelectiveQuery   from '../../.github/scripts/rules/apex/nonSelectiveQuery.js';
+import noSoqlInLoops       from './rules/apex/noSoqlInLoops.js';
+import noDmlInLoops        from './rules/apex/noDmlInLoops.js';
+import bulkifiedLogic      from './rules/apex/bulkifiedLogic.js';
+import apexTestChanged     from './rules/apex/apexTestChanged.js';
+import noHardcodedIds      from './rules/apex/noHardcodedIds.js';
+import broadCatchRule      from './rules/apex/broadCatchRule.js';
+import nonSelectiveQuery   from './rules/apex/nonSelectiveQuery.js';
 
-import oneTriggerPerObject from '../../.github/scripts/rules/trigger/oneTriggerPerObject.js';
-import triggerLogicRule    from '../../.github/scripts/rules/trigger/triggerLogicRule.js';
-import recursionGuard      from '../../.github/scripts/rules/trigger/recursionGuard.js';
+import oneTriggerPerObject from './rules/trigger/oneTriggerPerObject.js';
+import triggerLogicRule    from './rules/trigger/triggerLogicRule.js';
+import recursionGuard      from './rules/trigger/recursionGuard.js';
 
-import preferPermissionSets  from '../../.github/scripts/rules/security/preferPermissionSets.js';
-import newFieldNeedsPermset  from '../../.github/scripts/rules/security/newFieldNeedsPermset.js';
-import sensitivePerms        from '../../.github/scripts/rules/security/sensitivePerms.js';
-import lwcInsecureDom        from '../../.github/scripts/rules/security/lwcInsecureDom.js';
+import preferPermissionSets  from './rules/security/preferPermissionSets.js';
+import newFieldNeedsPermset  from './rules/security/newFieldNeedsPermset.js';
+import sensitivePerms        from './rules/security/sensitivePerms.js';
+import lwcInsecureDom        from './rules/security/lwcInsecureDom.js';
 
-import lwcNoHardcodedUrls  from '../../.github/scripts/rules/lwc/lwcNoHardcodedUrls.js';
-import lwcNavigation       from '../../.github/scripts/rules/lwc/lwcNavigation.js';
-import lwcDomManipulation  from '../../.github/scripts/rules/lwc/lwcDomManipulation.js';
-import lwcHardcodedLabels  from '../../.github/scripts/rules/lwc/lwcHardcodedLabels.js';
-import lwcApexCallPattern  from '../../.github/scripts/rules/lwc/lwcApexCallPattern.js';
+import lwcNoHardcodedUrls  from './rules/lwc/lwcNoHardcodedUrls.js';
+import lwcNavigation       from './rules/lwc/lwcNavigation.js';
+import lwcDomManipulation  from './rules/lwc/lwcDomManipulation.js';
+import lwcHardcodedLabels  from './rules/lwc/lwcHardcodedLabels.js';
+import lwcApexCallPattern  from './rules/lwc/lwcApexCallPattern.js';
 
-import flowReviewRequired  from '../../.github/scripts/rules/flow/flowReviewRequired.js';
-import flowNamingRule      from '../../.github/scripts/rules/flow/flowNamingRule.js';
-import largeFlowRule       from '../../.github/scripts/rules/flow/largeFlowRule.js';
-import apexFlowSameObject  from '../../.github/scripts/rules/flow/apexFlowSameObject.js';
-import fieldFlowImpact     from '../../.github/scripts/rules/flow/fieldFlowImpact.js';
+import flowReviewRequired  from './rules/flow/flowReviewRequired.js';
+import flowNamingRule      from './rules/flow/flowNamingRule.js';
+import largeFlowRule       from './rules/flow/largeFlowRule.js';
+import apexFlowSameObject  from './rules/flow/apexFlowSameObject.js';
+import fieldFlowImpact     from './rules/flow/fieldFlowImpact.js';
 
-import missingDependencies from '../../.github/scripts/rules/metadata/missingDependencies.js';
-import destructiveChanges  from '../../.github/scripts/rules/metadata/destructiveChanges.js';
-import profileLargeDiff    from '../../.github/scripts/rules/metadata/profileLargeDiff.js';
-import labelsTranslations  from '../../.github/scripts/rules/metadata/labelsTranslations.js';
-import mixedConcerns       from '../../.github/scripts/rules/metadata/mixedConcerns.js';
+import missingDependencies from './rules/metadata/missingDependencies.js';
+import destructiveChanges  from './rules/metadata/destructiveChanges.js';
+import profileLargeDiff    from './rules/metadata/profileLargeDiff.js';
+import labelsTranslations  from './rules/metadata/labelsTranslations.js';
+import mixedConcerns       from './rules/metadata/mixedConcerns.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const RULES = [
@@ -203,13 +202,6 @@ function buildSummaryBody(findings) {
     lines.push('</details>');
   }
 
-  if (findings.some(f => f.ruleId?.startsWith('SF-AI-'))) {
-    lines.push(
-      '', '---',
-      '> Findings prefixed `SF-AI-` are generated by Claude Sonnet (AI-powered cross-repo impact analysis).'
-    );
-  }
-
   return lines.join('\n');
 }
 
@@ -228,24 +220,18 @@ async function main() {
     }))
   );
 
-  const staticFindings = [];
+  const findings = [];
 
   for (const rule of RULES) {
     try {
       const results = rule(enrichedFiles, enrichedFiles);
-      if (Array.isArray(results)) staticFindings.push(...results);
+      if (Array.isArray(results)) findings.push(...results);
     } catch (err) {
-      console.error(`Rule error: ${err.message}`);
+      console.error(`Rule "${rule.name}" error: ${err.message}`);
     }
   }
 
-  const aiFindings = await runAiReview(enrichedFiles, staticFindings).catch(err => {
-    console.error(`AI review error: ${err.message}`);
-    return [];
-  });
-
-  const findings = [...staticFindings, ...aiFindings];
-  console.log(`Total findings: ${findings.length} (static: ${staticFindings.length}, AI: ${aiFindings.length})`);
+  console.log(`Total findings: ${findings.length}`);
   findings.forEach(f => console.log(`  [${f.severity}] ${f.ruleId} — ${f.path ?? 'n/a'}`));
 
   for (const f of findings.filter(f => f.path && f.startLine)) {
