@@ -1,0 +1,37 @@
+import { ParsedPath } from 'node:path/posix';
+import { MetadataRepository } from '../metadata/MetadataRepository.js';
+import type { Config } from '../types/config.js';
+import type { Metadata } from '../types/metadata.js';
+import type { Manifest, Manifests, Work } from '../types/work.js';
+export default class StandardHandler {
+    protected readonly line: string;
+    protected readonly metadataDef: Metadata;
+    protected readonly work: Work;
+    protected readonly metadata: MetadataRepository;
+    protected readonly changeType: string;
+    protected readonly diffs: Manifests;
+    protected readonly config: Config;
+    protected readonly warnings: Error[];
+    protected readonly splittedLine: string[];
+    protected suffixRegex: RegExp;
+    protected readonly ext: string;
+    protected readonly parsedLine: ParsedPath;
+    protected readonly parentFolder: string;
+    constructor(line: string, metadataDef: Metadata, work: Work, metadata: MetadataRepository);
+    handle(): Promise<void>;
+    handleAddition(): Promise<void>;
+    handleDeletion(): Promise<void>;
+    handleModification(): Promise<void>;
+    protected _getParsedPath(): ParsedPath;
+    protected _getElementName(): string;
+    protected _fillPackage(store: Manifest): void;
+    protected _copyWithMetaFile(src: string): Promise<void>;
+    protected _copy(elementPath: string): Promise<void>;
+    protected _getMetaTypeFilePath(path: string): string;
+    protected _shouldCopyMetaFile(path: string): boolean;
+    protected _parseLine(): RegExpMatchArray | null;
+    protected _isProcessable(): boolean;
+    protected _delegateFileCopy(): boolean;
+    protected _parentFolderIsNotTheType(): boolean;
+    toString(): string;
+}

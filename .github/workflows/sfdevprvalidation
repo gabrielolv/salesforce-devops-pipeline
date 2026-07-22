@@ -1,0 +1,141 @@
+name: sfdevprvalidation
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      commit_hash:
+        description: 'Specific commit hash to deploy (leave empty for latest)'
+        required: false
+        default: ''
+
+jobs:
+  # ─────────────── BUILD & VALIDATION ───────────────
+  build-and-validate:
+    name: Build and Pre-Deployment Validation
+    runs-on: ubuntu-latest
+    environment: sfdev
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      nothing_to_deploy: ${{ (steps.check-deploy-specific.outputs.nothing_to_deploy == 'true' || steps.check-deploy-all.outputs.nothing_to_deploy == 'true') && steps.check-vlocity.outputs.has_changes != 'true' }}
+      sf_nothing_to_deploy: ${{ steps.check-deploy-specific.outputs.nothing_to_deploy == 'true' || steps.check-deploy-all.outputs.nothing_to_deploy == 'true' }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install Salesforce CLI
+        uses: ./.github/actions/install-sf-cli
+
+      - name: Set commit hash from input
+        if: ${{ github.event.inputs.commit_hash != '' }}
+        run: |
+          commitHash="${{ github.event.inputs.commit_hash }}"
+          echo "Validating commit $commitHash exists on branch ${GITHUB_REF_NAME}..."
+          git fetch origin
+          if ! git branch -r --contains "$commitHash" | grep -q "origin/${GITHUB_REF_NAME}"; then
+            echo "::error::Commit $commitHash does not exist in branch ${GITHUB_REF_NAME}."
+            exit 1
+          fi
+          echo "COMMIT_HASH=$commitHash" >> $GITHUB_ENV
+
+      - name: Get last successful sfdev commit on develop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "$COMMIT_HASH" ]; then
+            echo "COMMIT_HASH already set to $COMMIT_HASH, skipping."
+            exit 0
+          fi
+
+          echo "Fetching last successful sfdev.yml run on develop branch..."
+
+          LAST_COMMIT=$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow "sfdev.yml" \
+            --branch "develop" \
+            --status success \
+            --limit 1 \
+            --json headSha \
+            --jq '.[0].headSha')
+
+          if [ -z "$LAST_COMMIT" ] || [ "$LAST_COMMIT" = "null" ]; then
+            echo "No previous successful sfdev run found, checking first-run-baseline.yml on develop..."
+            LAST_COMMIT=$(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow "first-run-baseline.yml" \
+              --branch "develop" \
+              --status success \
+              --limit 1 \
+              --json headSha \
+              --jq '.[0].headSha')
+          fi
+
+          if [ -z "$LAST_COMMIT" ] || [ "$LAST_COMMIT" = "null" ]; then
+            echo "::error::No baseline commit found on develop. Cannot generate delta for PR validation."
+            exit 1
+          fi
+
+          echo "Baseline commit (last successful sfdev on develop): $LAST_COMMIT"
+          echo "COMMIT_HASH=$LAST_COMMIT" >> $GITHUB_ENV
+
+      - name: Install plugins
+        uses: ./.github/actions/install-plugin
+
+      - name: Generate delta package
+        uses: ./.github/actions/generate-delta-pr-validation
+        with:
+          commit_hash: ${{ env.COMMIT_HASH }}
+
+      - name: Detect Vlocity changes
+        id: check-vlocity
+        run: |
+          chmod +x .github/scripts/vlocity-delta.sh
+          VLOCITY_ROOT=vlocity bash .github/scripts/vlocity-delta.sh
+          DEPLOY=0; [ -s delta/vlocity/deploy-manifest.txt ] && DEPLOY=$(grep -c . delta/vlocity/deploy-manifest.txt)
+          DELETE=0; [ -s delta/vlocity/delete-manifest.txt ] && DELETE=$(grep -c . delta/vlocity/delete-manifest.txt)
+          if [ "$DEPLOY" -gt 0 ] || [ "$DELETE" -gt 0 ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate sf command for running tests
+        run: |
+          echo "Generating sf command for running tests..."
+          sfCommandTests=$(node -e "require('./.github/workflows/GenerateSfdxCommand.js')();")
+          echo "sfCommandTests=$sfCommandTests" >> $GITHUB_ENV
+          echo "sfCommandTests: $sfCommandTests"
+
+      - name: Login to Salesforce
+        uses: ./.github/actions/sf-login
+        with:
+          sf_username: ${{ secrets.SF_USERNAME }}
+          sf_client_id: ${{ secrets.SF_CLIENT_ID }}
+          sf_jwt_key: ${{ secrets.SF_JWT_KEY }}
+          sf_login_url: ${{ secrets.SF_LOGIN_URL }}
+
+      - name: Check deploy (specific tests)
+        id: check-deploy-specific
+        uses: ./.github/actions/sf-check-deploy
+        with:
+          include_sf_command_tests: 'true'
+          display_name: 'Check to deploy to Salesforce'
+
+      - name: Check deploy (all tests)
+        id: check-deploy-all
+        if: steps.check-deploy-specific.outputs.nothing_to_deploy != 'true'
+        uses: ./.github/actions/sf-check-deploy
+        with:
+          run_all_tests: 'true'
+          display_name: 'Run all tests'

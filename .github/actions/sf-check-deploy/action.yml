@@ -35,6 +35,22 @@ runs:
 
         cd "$sfdx_project_dir"
 
+        # Short-circuit when the delta is empty. A manifest with no <members>
+        # makes the CLI raise ComponentSetError ("No source-backed components
+        # present in the package."), which is not a real failure for a
+        # delta-based pipeline - it simply means nothing changed.
+        pkg_xml="./delta/package/package.xml"
+        destruct_xml="./delta/destructiveChanges/destructiveChanges.xml"
+        has_changes=false
+        if [ -f "$pkg_xml" ] && grep -q '<members>' "$pkg_xml"; then has_changes=true; fi
+        if [ -f "$destruct_xml" ] && grep -q '<members>' "$destruct_xml"; then has_changes=true; fi
+
+        if [ "$has_changes" = false ]; then
+          echo "::notice title=Nothing to Deploy::Delta package has no metadata or destructive changes. Deployment steps will be skipped."
+          echo "nothing_to_deploy=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
         cmd="sf project deploy start --dry-run -x ./delta/package/package.xml --post-destructive-changes ./delta/destructiveChanges/destructiveChanges.xml"
 
         if [[ "${{ inputs.include_sf_command_tests }}" == "true" ]]; then

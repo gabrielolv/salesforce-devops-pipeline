@@ -16,7 +16,7 @@ runs:
         mkdir -p delta
         echo "Using commitHash: ${{ inputs.commit_hash }}"
         echo "Generating delta from ${{ inputs.commit_hash }} to origin/${GITHUB_REF_NAME}"
-        sfdx sgd:source:delta -f ${{ inputs.commit_hash }} -t origin/${GITHUB_REF_NAME} -o ./delta
+        sfdx sgd:source:delta -f ${{ inputs.commit_hash }} -t origin/${GITHUB_REF_NAME} -s force-app -o ./delta
 
         echo -e "\ndelta/package/package.xml\n"
         cat ./delta/package/package.xml

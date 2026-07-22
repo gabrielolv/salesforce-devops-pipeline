@@ -1,0 +1,26 @@
+name: Generate Delta (PR Validation)
+description: Generate the delta package using sfdx-git-delta scoped to a PR's changes against the last deployed develop commit
+
+inputs:
+  commit_hash:
+    description: Base commit hash for delta generation (last successful tpldevelop deployment on develop)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Generate delta
+      shell: bash
+      run: |
+        echo "Generating delta..."
+        mkdir -p delta
+        echo "Using commitHash (last deployed): ${{ inputs.commit_hash }}"
+        echo "Generating delta from ${{ inputs.commit_hash }} to HEAD (PR merge commit)"
+        sfdx sgd:source:delta -f ${{ inputs.commit_hash }} -t HEAD -s force-app -o ./delta
+
+        echo -e "\ndelta/package/package.xml\n"
+        cat ./delta/package/package.xml
+        echo -e "\ndelta/destructiveChanges/package.xml\n"
+        cat ./delta/destructiveChanges/package.xml
+        echo -e "\ndelta/destructiveChanges/destructiveChanges.xml\n"
+        cat ./delta/destructiveChanges/destructiveChanges.xml

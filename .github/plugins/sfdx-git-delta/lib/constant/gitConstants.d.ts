@@ -1,0 +1,10 @@
+export declare const ADDITION = "A";
+export declare const BLOB_TYPE = "blob";
+export declare const DELETION = "D";
+export declare const GIT_DIFF_TYPE_REGEX: RegExp;
+export declare const GIT_FOLDER = ".git";
+export declare const HEAD = "HEAD";
+export declare const IGNORE_WHITESPACE_PARAMS: string[];
+export declare const MODIFICATION = "M";
+export declare const NUM_STAT_CHANGE_INFORMATION: RegExp;
+export declare const TREE_TYPE = "tree";

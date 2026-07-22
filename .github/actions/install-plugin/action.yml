@@ -1,5 +1,5 @@
 name: Install SF Plugins
-description: Configure SOAP API for deployment and install sfdx-git-delta
+description: Configure SOAP API for deployment and link the repo-vendored sfdx-git-delta
 
 runs:
   using: composite
@@ -10,8 +10,15 @@ runs:
         echo "Configuring Salesforce CLI to use SOAP API for deployment..."
         sf config set org-metadata-rest-deploy false --global
 
-    - name: Install sfdx-git-delta Plugin
+    - name: Link vendored sfdx-git-delta Plugin
       shell: bash
       run: |
-        echo "Installing sfdx-git-delta plugin..."
-        printf "y\n" | sf plugins install sfdx-git-delta
+        echo "Linking repo-vendored sfdx-git-delta plugin (no download from npm)..."
+        PLUGIN_DIR="${GITHUB_WORKSPACE}/.github/plugins/sfdx-git-delta"
+        if [ ! -d "${PLUGIN_DIR}/node_modules" ]; then
+          echo "::error::Vendored plugin missing or has no node_modules at ${PLUGIN_DIR}"
+          exit 1
+        fi
+        sf plugins link "${PLUGIN_DIR}" --no-install
+        echo "Installed plugins:"
+        sf plugins
