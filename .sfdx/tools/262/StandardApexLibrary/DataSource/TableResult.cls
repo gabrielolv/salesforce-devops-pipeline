@@ -1,0 +1,68 @@
+/**
+ * Contains the results of a search or query.
+ */
+global class TableResult {
+
+  global TableResult() {}
+
+  global String errorMessage;
+
+  global String queryMoreToken;
+
+  global List<Map<String,Object>> rows;
+
+  global Boolean success;
+
+  global String tableName;
+
+  global Integer totalSize;
+
+  /**
+   * errorMessage
+   * @param errorMessage 
+   * @return DataSource.TableResult
+   */
+  global static DataSource.TableResult error(String errorMessage) {}
+
+  /**
+   * Returns a subset of data rows in a TableResult with the provided property values and the number of rows in the table.
+   * @param success Whether the search or query was successful.
+   * @param errorMessage errorMessage
+   * @param tableName Name of the table that was queried.
+   * @param rows Rows of data.
+   * @param totalSize The total number of rows that meet the query criteria, even when the external system is requested to return a smaller batch size.
+   * @return DataSource.TableResult
+   */
+  global static DataSource.TableResult get(Boolean success, String errorMessage, String tableName, List<Map<String,Object>> rows, Integer totalSize) {}
+
+  /**
+   * Returns a subset of data rows in a TableResult with the provided property values and the number of rows in the table.
+   * @param success Whether the search or query was successful.
+   * @param errorMessage errorMessage
+   * @param tableName Name of the table that was queried.
+   * @param rows Rows of data.
+   * @return DataSource.TableResult
+   */
+  global static DataSource.TableResult get(Boolean success, String errorMessage, String tableName, List<Map<String,Object>> rows) {}
+
+  /**
+   * Returns a subset of data rows in a TableResult with the provided property values and the number of rows in the table.
+   * @param queryContext 
+   * @param rows Rows of data.
+   * @return DataSource.TableResult
+   */
+  global static DataSource.TableResult get(DataSource.QueryContext queryContext, List<Map<String,Object>> rows) {}
+
+  /**
+   * Returns a subset of data rows in a TableResult with the provided property values and the number of rows in the table.
+   * @param tableSelection 
+   * @param rows Rows of data.
+   * @return DataSource.TableResult
+   */
+  global static DataSource.TableResult get(DataSource.TableSelection tableSelection, List<Map<String,Object>> rows) {}
+
+  global Object clone() {}
+
+  global static DataSource.TableResult get(Boolean success, String errorMessage, String tableName, List<Map<String,Object>> rows, Integer totalSize, String queryMoreToken) {}
+
+}

@@ -1,0 +1,26 @@
+/**
+ * Contains event information that the evaluate method uses to evaluate a transaction security policy.
+ */
+global class Event {
+
+  global Event() {}
+
+  global String action;
+
+  global Map<String,String> data;
+
+  global String entityId;
+
+  global String entityName;
+
+  global String organizationId;
+
+  global String resourceType;
+
+  global Datetime timeStamp;
+
+  global String userId;
+
+  global Object clone() {}
+
+}

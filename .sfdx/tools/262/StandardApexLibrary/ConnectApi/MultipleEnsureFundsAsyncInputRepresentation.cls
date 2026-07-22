@@ -1,0 +1,15 @@
+/**
+ * List of Invoices and the associated OrderSummaries.
+ */
+global class MultipleEnsureFundsAsyncInputRepresentation {
+
+  global MultipleEnsureFundsAsyncInputRepresentation() {}
+
+  /**
+   * List of Invoices to ensure funds for and the associated OrderSummaries.
+   */
+  global List < ConnectApi.InnerEnsureFundsAsyncInputRepresentation > asyncInputs;
+
+  global Object clone() {}
+
+}
